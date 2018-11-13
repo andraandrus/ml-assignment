@@ -8,4 +8,4 @@ import matplotlib.pyplot as plt
 
 housing = pandas.read_csv('housing.csv')
 
-display(housing) #displays in Jupyter notebook
+print(housing) #displays in Jupyter notebook
