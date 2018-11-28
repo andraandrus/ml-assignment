@@ -10,10 +10,19 @@ import matplotlib.pyplot as plt
 
 housing = pandas.read_csv('housing.csv')
 
-# print(housing) #displays in Jupyter notebook
+print(housing) #displays in Jupyter notebook
 
 # ocean_proximity can have the following values 'ISLAND' 'NEAR_OCEAN' 'INLAND' '<1H OCEAN' 'NEAR BAY'
-# print(housing['ocean_proximity'])
+print(housing['ocean_proximity'])
+
+housing['1h_ocean'] = [1 if i=='<1H OCEAN' else 0 for i in housing.ocean_proximity.values]
+housing['island'] = [1 if i=='ISLAND' else 0 for i in housing.ocean_proximity.values]
+housing['inland'] = [1 if i=='INLAND' else 0 for i in housing.ocean_proximity.values]
+housing['near_ocean'] = [1 if i=='NEAR OCEAN' else 0 for i in housing.ocean_proximity.values]
+housing['near_bay'] = [1 if i=='NEAR BAY' else 0 for i in housing.ocean_proximity.values]
+housing.drop(columns=['ocean_proximity'], inplace=True)
+
+print (housing)
 
 # total_bedrooms has missing values.
 # Approaches:
@@ -39,13 +48,6 @@ print(sum(missing))
 # Regression using the above
 
 # 2. replace with values from nearest neighbour
-known_columns = np.array([['total_rooms'], ['population'], ['households'], ['median_income'], ['median_house_value']])
-predicted_column = np.array(['total_bedrooms'])
-
-knn = KNeighborsRegressor(n_neighbors=5)
-
-knn.fit(known_columns.reshape(1,5), predicted_column)
-
-knn.predict(predicted_column.reshape(-1,1))
+# kn?.predict(predicted_column.reshape(-1,1))
 
 # 3. use regression with the values in the total_rooms column as prior knowledge
