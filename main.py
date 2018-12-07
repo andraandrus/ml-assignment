@@ -91,13 +91,6 @@ print("1. replace with column average")
 print("------------------------------")
 regression(housing)
 
-
-
-
-
-# Evaluation of method
-
-
 # 2. replace with values from nearest neighbour
 housing = initialHousing.copy()
 
@@ -106,33 +99,20 @@ housing_missing = housing_missing['total_rooms']
 
 housing_not_missing = housing[housing.total_bedrooms.notna()]
 X_train = housing_not_missing['total_rooms']                   # data  (X) -> longitude, latitude, total_rooms, population, households, median_house_value
-
-# print(X_train.head())
 y_train = housing_not_missing[['total_bedrooms']]              # label (y) -> total_bedrooms (column we want to predict)
-# print(y_train.head())
-
-# scaler = StandardScaler()
-# scaler.fit(X_train)
-
-# X_train = scaler.transform(X_train)
 
 X_shaped = []
 for index in range(0, len(X_train)):
         X_shaped.append([X_train.index[index]])
 
-# print(X_shaped)
-
-classifier = KNeighborsRegressor(n_neighbors=5)
-classifier.fit(X_shaped, y_train)
+regressor = KNeighborsRegressor(n_neighbors=5)
+regressor.fit(X_shaped, y_train)
 
 predicted_values = []
 for index in range(0, len(housing_missing)):
         values = housing_missing.iloc[index].tolist()
-        # print(values)
-        y_pred = classifier.predict([[values]])
+        y_pred = regressor.predict([[values]])
         predicted_values.append(y_pred[0][0])
-        # print('prediction: ' + str(y_pred))
-        # print('-------')
 
 housing.loc[housing.total_bedrooms.isna(), 'total_bedrooms'] = predicted_values
 
@@ -140,6 +120,19 @@ print("\n2. replace with values from nearest neighbour")
 print("--------------------------------")
 regression(housing)
 
-# Evaluation of method
-
 # 3. use regression with the values in the total_rooms column as prior knowledge
+housing = initialHousing.copy()
+
+notna = housing.total_bedrooms.notna()
+isna = housing.total_bedrooms.isna()
+
+model = lm.LinearRegression()
+model.fit(housing.total_rooms.values[notna].reshape(-1,1), housing.total_bedrooms.values[notna].reshape(-1,1))
+model.score(housing.total_rooms.values[notna].reshape(-1,1), housing.total_bedrooms.values[notna].reshape(-1,1))
+
+missing_bedrooms = model.predict(housing.total_rooms.values[isna].reshape(-1,1))
+housing.total_bedrooms.loc[isna] = np.squeeze(missing_bedrooms)
+
+print("\n3. use prior knowledge")
+print("--------------------------------")
+regression(housing)
