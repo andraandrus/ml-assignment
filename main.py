@@ -6,6 +6,8 @@ from sklearn import preprocessing as pre
 from sklearn.neighbors import KNeighborsRegressor
 import random
 import matplotlib.pyplot as plt 
+import math
+from sklearn.preprocessing import StandardScaler
 
 def regression(housing):
     # Regression using the above
@@ -50,7 +52,7 @@ housing['near_ocean'] = [1 if i=='NEAR OCEAN' else 0 for i in housing.ocean_prox
 housing['near_bay'] = [1 if i=='NEAR BAY' else 0 for i in housing.ocean_proximity.values]
 housing.drop(columns=['ocean_proximity'], inplace=True)
 
-initialHousing = np.copy(housing)
+initialHousing = housing.copy()
 
 # total_bedrooms has missing values.
 # Approaches:
@@ -85,5 +87,46 @@ regression(housing)
 
 # 2. replace with values from nearest neighbour
 # kn?.predict(predicted_column.reshape(-1,1))
+
+housing = initialHousing.copy()
+
+housing_missing = housing[housing.total_bedrooms.isna()] # these we want to predict
+housing_missing = housing_missing['total_rooms']
+
+housing_not_missing = housing[housing.total_bedrooms.notna()]
+X_train = housing_not_missing['total_rooms']                   # data  (X) -> longitude, latitude, total_rooms, population, households, median_house_value
+
+# print(X_train.head())
+y_train = housing_not_missing[['total_bedrooms']]              # label (y) -> total_bedrooms (column we want to predict)
+# print(y_train.head())
+
+# scaler = StandardScaler()
+# scaler.fit(X_train)
+
+# X_train = scaler.transform(X_train)
+
+X_shaped = []
+for index in range(0, len(X_train)):
+        X_shaped.append([X_train.index[index]])
+
+# print(X_shaped)
+
+classifier = KNeighborsRegressor(n_neighbors=5)
+classifier.fit(X_shaped, y_train)
+
+predicted_values = []
+for index in range(0, len(housing_missing)):
+        values = housing_missing.iloc[index].tolist()
+        # print(values)
+        y_pred = classifier.predict([[values]])
+        predicted_values.append(y_pred[0][0])
+        # print('prediction: ' + str(y_pred))
+        # print('-------')
+
+housing.loc[housing.total_bedrooms.isna(), 'total_bedrooms'] = predicted_values
+
+print("\n2. replace with values from nearest neighbour")
+print("--------------------------------")
+regression(housing)
 
 # 3. use regression with the values in the total_rooms column as prior knowledge
