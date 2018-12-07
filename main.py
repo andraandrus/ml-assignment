@@ -5,8 +5,10 @@ from sklearn.model_selection import KFold
 from sklearn import preprocessing as pre
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import KBinsDiscretizer
 import random
 import matplotlib.pyplot as plt 
+import warnings
 
 
 housing = pandas.read_csv('housing.csv')
@@ -67,11 +69,29 @@ yt = np.delete(y, holdout, 0)
 print(Xt.shape)
 print(yt.shape)
 
-# Have to shuffle the data because it is grouped.
-kf = KFold(n_splits=5, shuffle=True)
-
+flag = True
 n = 0
-for train_index, test_index in kf.split(Xt):
+while flag:
+    flag = False
+    kf = KFold(n_splits=5, shuffle=True)
+    ksplit = kf.split(Xt)
+    for train_index, test_index in kf.split(Xt):
+        X_train, X_test = Xt[train_index], Xt[test_index]
+        y_train, y_test = yt[train_index], yt[test_index]
+        for i in range(13):
+            abc1 = X_train[:, i]
+            abc2 = X_test[:, i]
+            if X_train[:, i].min() == X_train[:, i].max() or X_test[:, i].min() == X_test[:, i].max():
+                flag = True
+    print(n)
+    n += 1
+
+# Have to shuffle the data because it is grouped.
+# kf = KFold(n_splits=5, shuffle=True)
+
+n = 1
+
+for train_index, test_index in ksplit:
     print('\nFold #{n}'.format(n=n))
     X_train, X_test = Xt[train_index], Xt[test_index]
     y_train, y_test = yt[train_index], yt[test_index]
@@ -82,14 +102,24 @@ for train_index, test_index in kf.split(Xt):
     print('Training error: ' + str(model.score(X_train, y_train)))
     print('Testing error: ' + str(model.score(X_test, y_test)))
 
-    for deg in range(2, 5):
+    for deg in range(2, 4):
         poly = PolynomialFeatures(degree=deg)
         print('----')
         print('Polynomial Regression Results with degree = {deg}: '.format(deg=deg))
-        X_train_, X_test_ = poly.fit_transform(X_train), poly.fit_transform(X_test)
-        model.fit(X_train_, y_train)
-        print('Training error: ' + str(model.score(X_train_, y_train)))
-        print('Testing error: ' + str(model.score(X_test_, y_test)))
+        X_train_poly, X_test_poly = poly.fit_transform(X_train), poly.fit_transform(X_test)
+        model.fit(X_train_poly, y_train)
+        print('Training error: ' + str(model.score(X_train_poly, y_train)))
+        print('Testing error: ' + str(model.score(X_test_poly, y_test)))
+
+    for n_bins in range(10, 16):
+        binner = KBinsDiscretizer(n_bins=n_bins, strategy='uniform')
+        print('----')
+        print('Binning Regression Results with no. of bins = {n_bins}: '.format(n_bins=n_bins))
+        X_train_binned = binner.fit_transform(X_train)
+        X_test_binned = binner.fit_transform(X_test)
+        model.fit(X_train_binned, y_train)
+        print('Training error: ' + str(model.score(X_train_binned, y_train)))
+        print('Testing error: ' + str(model.score(X_test_binned, y_test)))
 
     n += 1
 
