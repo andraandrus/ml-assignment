@@ -57,37 +57,18 @@ initialHousing = housing.copy()
 # total_bedrooms has missing values.
 # Approaches:
 # 1. replace with column average
-not_missing = housing.total_bedrooms.notna()
-missing = housing.total_bedrooms.isna()
-count = sum(not_missing)
-vals = sum(housing.total_bedrooms.values[not_missing])
-avg = vals/count
-# print(avg)
-# print ('----')
 
-# print(len(housing.total_bedrooms))
-
-for index in range(0, len(missing)):
-    if missing[index]:
-        housing.total_bedrooms[index] = avg
-
-
-# print ('----')
-missing = housing.total_bedrooms.isna()
-# print(sum(missing))
+mean = housing['total_bedrooms'].mean() 
+housing['total_bedrooms'].fillna(mean, inplace =True)
 
 print("1. replace with column average")
 print("------------------------------")
 regression(housing)
 
-
-
 # Evaluation of method
 
 
 # 2. replace with values from nearest neighbour
-# kn?.predict(predicted_column.reshape(-1,1))
-
 housing = initialHousing.copy()
 
 housing_missing = housing[housing.total_bedrooms.isna()] # these we want to predict
@@ -124,9 +105,12 @@ for index in range(0, len(housing_missing)):
         # print('-------')
 
 housing.loc[housing.total_bedrooms.isna(), 'total_bedrooms'] = predicted_values
+print(sum(housing.total_bedrooms.isna()))
 
 print("\n2. replace with values from nearest neighbour")
 print("--------------------------------")
 regression(housing)
+
+# Evaluation of method
 
 # 3. use regression with the values in the total_rooms column as prior knowledge
