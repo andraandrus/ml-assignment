@@ -6,6 +6,7 @@ from sklearn import preprocessing as pre
 from sklearn.neighbors import KNeighborsRegressor
 import random
 import matplotlib.pyplot as plt 
+import matplotlib as mpl
 import math
 from sklearn.preprocessing import StandardScaler
 
@@ -19,11 +20,11 @@ def regression(housing):
     # print(X.shape)
     # print(y.shape)
 
-    # Pull out values into a holdout set
-    holdout = random.sample(range(0, 10640), 1000)  # tried with different sizes of the holdout dataset.
-    # Did not make much difference.
-    X_holdout = X[holdout]
-    y_holdout = y[holdout]
+    # Pull out values into a holdout set of unseen data
+    holdout = random.sample(range(0, 20639), 5000) 
+   
+    X_unseen = X[holdout]
+    y_unseen = y[holdout]
 
     Xt = np.delete(X, holdout, 0)
     yt = np.delete(y, holdout, 0)
@@ -34,14 +35,39 @@ def regression(housing):
     # Have to shuffle the data because it is grouped.
     kf = KFold(n_splits=5, shuffle=True)
 
+    best_model = [0, 0, 0]  # x index, y index, score   
     for train_index, test_index in kf.split(Xt):
         X_train, X_test = Xt[train_index], Xt[test_index]
         y_train, y_test = yt[train_index], yt[test_index]
         model.fit(X_train, y_train)
-        print('Training error: ' + str(model.score(X_train, y_train)))
-        print('Testing error: ' + str(model.score(X_test, y_test)))
+        accuracy = model.score(X_train, y_train)
+        if accuracy > best_model[2]:
+                best_model[2] = accuracy
+                best_model[0] = X_train
+                best_model[1] = y_train
+
+        print('Training accuracy: ' + str(accuracy*100) + ' %')
+        print('Testing accuracy: ' + str(model.score(X_test, y_test)*100) + ' %')
+
+    optimal_model = model.fit(best_model[0], best_model[1])
+    print('Accuracy on unseen data:' + str(optimal_model.score(X_unseen, y_unseen)*100))   
 
 housing = pandas.read_csv('housing.csv')
+
+def xyplot(x1=None, y1=None, x2=None, y2=None, x3=None, y3=None, title=None, fname=None):
+    plt.figure()
+    if x1 is not None and y1 is not None:
+        plt.plot(x1,y1,'b.')
+    if x2 is not None and y2 is not None:
+        plt.plot(x2,y2,'k-')
+    if x3 is not None and y3 is not None:
+        plt.plot(x3,y3,'r-')
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title(title)
+    plt.tight_layout()
+    if fname:
+        plt.savefig(fname)
 
 # ocean_proximity can have the following values 'ISLAND' 'NEAR_OCEAN' 'INLAND' '<1H OCEAN' 'NEAR BAY'
 
@@ -64,6 +90,10 @@ housing['total_bedrooms'].fillna(mean, inplace =True)
 print("1. replace with column average")
 print("------------------------------")
 regression(housing)
+
+
+
+
 
 # Evaluation of method
 
@@ -105,7 +135,6 @@ for index in range(0, len(housing_missing)):
         # print('-------')
 
 housing.loc[housing.total_bedrooms.isna(), 'total_bedrooms'] = predicted_values
-print(sum(housing.total_bedrooms.isna()))
 
 print("\n2. replace with values from nearest neighbour")
 print("--------------------------------")
