@@ -71,11 +71,21 @@ def xyplot(x1=None, y1=None, x2=None, y2=None, x3=None, y3=None, title=None, fna
 
 # ocean_proximity can have the following values 'ISLAND' 'NEAR_OCEAN' 'INLAND' '<1H OCEAN' 'NEAR BAY'
 
-housing['1h_ocean'] = [1 if i=='<1H OCEAN' else 0 for i in housing.ocean_proximity.values]
-housing['island'] = [1 if i=='ISLAND' else 0 for i in housing.ocean_proximity.values]
-housing['inland'] = [1 if i=='INLAND' else 0 for i in housing.ocean_proximity.values]
-housing['near_ocean'] = [1 if i=='NEAR OCEAN' else 0 for i in housing.ocean_proximity.values]
-housing['near_bay'] = [1 if i=='NEAR BAY' else 0 for i in housing.ocean_proximity.values]
+# housing['1h_ocean'] = [1 if i=='<1H OCEAN' else 0 for i in housing.ocean_proximity.values]
+# housing['island'] = [1 if i=='ISLAND' else 0 for i in housing.ocean_proximity.values]
+# housing['inland'] = [1 if i=='INLAND' else 0 for i in housing.ocean_proximity.values]
+# housing['near_ocean'] = [1 if i=='NEAR OCEAN' else 0 for i in housing.ocean_proximity.values]
+# housing['near_bay'] = [1 if i=='NEAR BAY' else 0 for i in housing.ocean_proximity.values]
+# housing.drop(columns=['ocean_proximity'], inplace=True)
+
+ocean_proximity_type = {
+    'ISLAND': 1,
+    'NEAR OCEAN': 2,
+    'INLAND': 3,
+    '<1H OCEAN': 4,
+    'NEAR BAY': 5
+}
+housing['ocean_proximity_int'] = [ocean_proximity_type[x] for x in housing.ocean_proximity.values]
 housing.drop(columns=['ocean_proximity'], inplace=True)
 
 initialHousing = housing.copy()
