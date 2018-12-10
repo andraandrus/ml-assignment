@@ -7,8 +7,9 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.preprocessing import KBinsDiscretizer
 import random
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 import warnings
+from sklearn.svm import SVR
 
 
 housing = pandas.read_csv('housing.csv')
@@ -79,98 +80,83 @@ yt = np.delete(y, holdout, 0)
 print(Xt.shape)
 print(yt.shape)
 
-# flag = True
-# n = 0
-# while flag:
-#     flag = False
-#     kf = KFold(n_splits=5, shuffle=True)
-#     ksplit = kf.split(Xt)
-#     for train_index, test_index in kf.split(Xt):
-#         X_train, X_test = Xt[train_index], Xt[test_index]
-#         y_train, y_test = yt[train_index], yt[test_index]
-#         for i in range(13):
-#             abc1 = X_train[:, i]
-#             abc2 = X_test[:, i]
-#             if X_train[:, i].min() == X_train[:, i].max() or X_test[:, i].min() == X_test[:, i].max():
-#                 flag = True
-#     print(n)
-#     n += 1
-
 # Have to shuffle the data because it is grouped.
-# kf = KFold(n_splits=5, shuffle=True)
-
-n = 1
 kf = KFold(n_splits=5, shuffle=True)
 
-best_poly_model = [0, 0, 0]  # x index, y index, score
+best_linear_model = [0, 0, 0, 0]  # x index, y index, score, fold no.
+best_linear = None
+best_poly_model = [0, 0, 0, 0]  # x index, y index, score, fold no.
 best_poly = None
-best_binner_model = [0, 0, 0]  # x index, y index, score
+best_binner_model = [0, 0, 0, 0]  # x index, y index, score, fold no.
 best_binner = None
+
+n = 1  # Fold counter
 
 for train_index, test_index in kf.split(Xt):
     print('\nFold #{n}'.format(n=n))
     X_train, X_test = Xt[train_index], Xt[test_index]
     y_train, y_test = yt[train_index], yt[test_index]
 
-    # print('----')
-    # print('Linear Regression Results: ')
-    # model.fit(X_train, y_train)
+    model.fit(X_train, y_train)
 
-    # accuracy = model.score(X_train, y_train)
-    # if accuracy > best_model[2]:
-    #     best_model[2] = accuracy
-    #     best_model[0] = X_train
-    #     best_model[1] = y_train
-    # print('Training accuracy: ' + str(accuracy * 100) + ' %')
-    # print('Testing accuracy: ' + str(model.score(X_test, y_test) * 100) + ' %')
+    accuracy = model.score(X_train, y_train)
+    if accuracy > best_linear_model[2]:
+        print("NEW LINEAR BEST: FOLD: " + n.__str__() + " ACCURACY: " + accuracy.__str__())
+        best_linear_model[0] = X_train
+        best_linear_model[1] = y_train
+        best_linear_model[2] = accuracy
+        best_linear_model[3] = n
 
-    for deg in range(1, 6):
+    for deg in range(1, 5):
         poly = PolynomialFeatures(degree=deg)
-        # print('----')
-        # print('Polynomial Regression Results with degree = {deg}: '.format(deg=deg))
         X_train_poly, X_test_poly = poly.fit_transform(X_train), poly.fit_transform(X_test)
         model.fit(X_train_poly, y_train)
 
         accuracy = model.score(X_test_poly, y_test)
         if accuracy > best_poly_model[2]:
-            best_poly_model[2] = accuracy
+            print("NEW POLYNOMIAL BEST: FOLD: " + n.__str__() + " DEGREE: " + deg.__str__() + " ACCURACY: " + accuracy.__str__())
             best_poly_model[0] = X_train_poly
             best_poly_model[1] = y_train
+            best_poly_model[2] = accuracy
+            best_poly_model[3] = n
             best_poly = poly
 
-        # print('Training error: ' + str(model.score(X_train_poly, y_train)))
-        # print('Testing error: ' + str(model.score(X_test_poly, y_test)))
-
-
-    for n_bins in range(10, 11):
+    for n_bins in range(10, 100):
         binner = KBinsDiscretizer(n_bins=n_bins, strategy='uniform')
-        # print('----')
-        # print('Binning Regression Results with no. of bins = {n_bins}: '.format(n_bins=n_bins))
-        X_train_binned = binner.fit_transform(X_train)
-        X_test_binned = binner.fit_transform(X_test)
+        X_train_binned, X_test_binned = binner.fit_transform(X_train), binner.fit_transform(X_test)
         model.fit(X_train_binned, y_train)
 
         accuracy = model.score(X_test_binned, y_test)
         if accuracy > best_binner_model[2]:
-            best_binner_model[2] = accuracy
+            print("NEW BINNING BEST: FOLD: " + n.__str__() + " BIN NO.: " + n_bins.__str__() + " ACCURACY: " + accuracy.__str__())
             best_binner_model[0] = X_train_binned
             best_binner_model[1] = y_train
+            best_binner_model[2] = accuracy
+            best_binner_model[3] = n
             best_binner = binner
 
-        # print('Training error: ' + str(model.score(X_train_binned, y_train)))
-        # print('Testing error: ' + str(model.score(X_test_binned, y_test)))
+    # svr_rbf = SVR(kernel='rbf', gamma=0.00001, C=1e6)
+    # svr_rbf.fit(X_train, y_train)
 
+    # print('----')
+    # print('SVR results for RBF: ')
+    # print('Training error: ' + str(svr_rbf.score(X_train, y_train)))
+    # print('Testing error: ' + str(svr_rbf.score(X_test, y_test)))
 
     n += 1
 
-
 # Evaluation of method
+optimal_model = model.fit(best_linear_model[0], best_linear_model[1])
+print('Accuracy on seen data LIN: ' + str(best_linear_model[2] * 100) + " on fold: " + str(best_linear_model[3]))
+print('Accuracy on unseen data LIN: ' + str(optimal_model.score(X_holdout, y_holdout) * 100))
 optimal_model = model.fit(best_poly_model[0], best_poly_model[1])
-print('Accuracy on unseen data POLY:' + str(optimal_model.score(best_poly.fit_transform(X_holdout), y_holdout) * 100))
+print('Accuracy on seen data POLY: ' + str(best_poly_model[2] * 100) + " on fold: " + str(best_poly_model[3]))
+print('Accuracy on unseen data POLY: ' + str(optimal_model.score(best_poly.fit_transform(X_holdout), y_holdout) * 100))
 print('Polynomial: ' + str(best_poly.degree))
 optimal_model = model.fit(best_binner_model[0], best_binner_model[1])
-print('Accuracy on unseen data BINN:' + str(optimal_model.score(best_binner.fit_transform(X_holdout), y_holdout) * 100))
-print('No of bins: ' + str(binner.n_bins))
+print('Accuracy on seen data BIN: ' + str(best_binner_model[2] * 100) + " on fold: " + str(best_binner_model[3]))
+print('Accuracy on unseen data BIN: ' + str(optimal_model.score(best_binner.fit_transform(X_holdout), y_holdout) * 100))
+print('No of bins: ' + str(best_binner.n_bins))
 
 # 2. replace with values from nearest neighbour
 # kn?.predict(predicted_column.reshape(-1,1))
