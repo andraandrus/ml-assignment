@@ -12,14 +12,11 @@ from sklearn.preprocessing import StandardScaler
 import sklearn.metrics as metrics
 
 def regression(housing):
-    # Regression using the above
     model = lm.LinearRegression()
 
     # First, extract the data into arrays
     y = housing.median_house_value.values.reshape(-1, 1)
     X = housing.drop(columns=['median_house_value'], inplace=False).values
-    # print(X.shape)
-    # print(y.shape)
 
     # Pull out values into a holdout set of unseen data
     holdout = random.sample(range(0, 20639), 5000) 
@@ -30,9 +27,6 @@ def regression(housing):
     Xt = np.delete(X, holdout, 0)
     yt = np.delete(y, holdout, 0)
 
-    print(Xt.shape)
-    print(yt.shape)
-
     # Have to shuffle the data because it is grouped.
     kf = KFold(n_splits=5, shuffle=True)
 
@@ -42,41 +36,22 @@ def regression(housing):
         X_train, X_test = Xt[train_index], Xt[test_index]
         y_train, y_test = yt[train_index], yt[test_index]
         model.fit(X_train, y_train)
-        # y_pred = model.predict(X_test)
         accuracy = model.score(X_test, y_test)
         if accuracy > best_model[2]:
                 best_model[2] = accuracy
                 best_model[0] = X_train
                 best_model[1] = y_train
-
         print('Training accuracy: ' + str(accuracy*100) + ' %')
-        # print('Testing accuracy: ' + str(model.score(X_test, y_test)*100) + ' %')
 
     optimal_model = model.fit(best_model[0], best_model[1])
-
     predicted_values = optimal_model.predict(X_unseen)
-
     score = metrics.r2_score(y_unseen, predicted_values)
 
     print('R2 score on unseen data:' + str(score*100))
     return optimal_model
 
+# Import housing data to Pandas DataFrame
 housing = pandas.read_csv('housing.csv')
-
-def xyplot(x1=None, y1=None, x2=None, y2=None, x3=None, y3=None, title=None, fname=None):
-    plt.figure()
-    if x1 is not None and y1 is not None:
-        plt.plot(x1,y1,'b.')
-    if x2 is not None and y2 is not None:
-        plt.plot(x2,y2,'k-')
-    if x3 is not None and y3 is not None:
-        plt.plot(x3,y3,'r-')
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.title(title)
-    plt.tight_layout()
-    if fname:
-        plt.savefig(fname)
 
 # ocean_proximity can have the following values 'ISLAND' 'NEAR_OCEAN' 'INLAND' '<1H OCEAN' 'NEAR BAY'
 
@@ -151,6 +126,6 @@ price_model = regression(housing)
 
 housing = housing.drop(columns=['median_house_value'])
 
-for index, col_name in enumerate(housing.columns):
-	print('column: ' + col_name + ', coef:' + str(price_model.coef_[0][index-1]))
+# for index, col_name in enumerate(housing.columns):
+# 	print('column: ' + col_name + ', coef:' + str(price_model.coef_[0][index-1]))
         
