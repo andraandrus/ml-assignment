@@ -11,6 +11,35 @@ import math
 from sklearn.preprocessing import StandardScaler
 import sklearn.metrics as metrics
 
+# Evaluation methods:
+
+# Train and Test Sets. (Need to pass whole dataset)
+def train_and_test(model, X, y):
+	seed = 3
+	X_train, X_test, Y_train, Y_test = model_selection.train_test_split(X, y, test_size=5000, random_state=seed)
+	model.fit(X_train, Y_train)
+	result = model.score(X_test, Y_test)
+	print("Accuracy: %.3f%%" % (result*100.0))
+	return result
+
+# Leave One Out Cross Validation.
+# def loocv(model, X, y):
+# 	loocv = model_selection.LeaveOneOut()
+# 	results = model_selection.cross_val_score(model, X, y, cv=loocv, scoring='r2')
+# 	mean = results.mean()*100.0
+# 	print("Accuracy: %.3f%% (%.3f%%)" % (mean, results.std()*100.0))
+# 	return mean
+
+# Repeated Random Test-Train Splits. (Need to pass whole dataset)
+def rrtts(model, X, y):
+	test_size = 0.33
+	seed = 3
+	kfold = model_selection.ShuffleSplit(n_splits=5, test_size=test_size, random_state=seed)
+	results = model_selection.cross_val_score(model, X, y, cv=kfold, scoring='r2')
+	print("Accuracy: %.3f%% (%.3f%%)" % (results.mean()*100.0, results.std()*100.0))
+	return results.mean()*100.0
+
+# K-fold Cross Validation.
 def cross_validation(model, Xt, yt):
 	seed = 3
 	kfold = model_selection.KFold(n_splits=5, random_state=seed, shuffle=True)
