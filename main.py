@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import math
 from sklearn.preprocessing import StandardScaler
+import sklearn.metrics as metrics
 
 def regression(housing):
     # Regression using the above
@@ -25,7 +26,7 @@ def regression(housing):
    
     X_unseen = X[holdout]
     y_unseen = y[holdout]
-
+    
     Xt = np.delete(X, holdout, 0)
     yt = np.delete(y, holdout, 0)
 
@@ -36,21 +37,29 @@ def regression(housing):
     kf = KFold(n_splits=5, shuffle=True)
 
     best_model = [0, 0, 0]  # x index, y index, score   
+
     for train_index, test_index in kf.split(Xt):
         X_train, X_test = Xt[train_index], Xt[test_index]
         y_train, y_test = yt[train_index], yt[test_index]
         model.fit(X_train, y_train)
-        accuracy = model.score(X_train, y_train)
+        # y_pred = model.predict(X_test)
+        accuracy = model.score(X_test, y_test)
         if accuracy > best_model[2]:
                 best_model[2] = accuracy
                 best_model[0] = X_train
                 best_model[1] = y_train
 
         print('Training accuracy: ' + str(accuracy*100) + ' %')
-        print('Testing accuracy: ' + str(model.score(X_test, y_test)*100) + ' %')
+        # print('Testing accuracy: ' + str(model.score(X_test, y_test)*100) + ' %')
 
     optimal_model = model.fit(best_model[0], best_model[1])
-    print('Accuracy on unseen data:' + str(optimal_model.score(X_unseen, y_unseen)*100))   
+
+    predicted_values = optimal_model.predict(X_unseen)
+
+    score = metrics.r2_score(y_unseen, predicted_values)
+
+    print('R2 score on unseen data:' + str(score*100))
+    return optimal_model
 
 housing = pandas.read_csv('housing.csv')
 
@@ -135,4 +144,13 @@ housing.total_bedrooms.loc[isna] = np.squeeze(missing_bedrooms)
 
 print("\n3. use prior knowledge")
 print("--------------------------------")
-regression(housing)
+price_model = regression(housing)
+
+# Drop logically irrelevant columns - neet to normalise beforehand:
+# use regression_model.coef to figure out unimportant variables
+
+housing = housing.drop(columns=['median_house_value'])
+
+for index, col_name in enumerate(housing.columns):
+	print('column: ' + col_name + ', coef:' + str(price_model.coef_[0][index-1]))
+        
