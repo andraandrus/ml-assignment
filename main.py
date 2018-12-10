@@ -11,6 +11,15 @@ import math
 from sklearn.preprocessing import StandardScaler
 import sklearn.metrics as metrics
 
+def cross_validation(model, Xt, yt):
+	seed = 3
+	kfold = model_selection.KFold(n_splits=5, random_state=seed, shuffle=True)
+	results = model_selection.cross_val_score(model, Xt, yt, cv=kfold, scoring='r2')
+	r2 = results.mean()*100.0
+	print("Cross Validation results:")
+	print("R2 mean: %.3f%%, Standard deviation: %.3f%%" % (r2, results.std()*100.0))
+	return r2
+
 def regression(housing):
 	model = lm.LinearRegression()
 
@@ -28,12 +37,7 @@ def regression(housing):
 	yt = np.delete(y, holdout, 0)
 
 	# Perform cross validation for model
-	seed = 3
-	kfold = model_selection.KFold(n_splits=5, random_state=seed, shuffle=True)
-	results = model_selection.cross_val_score(model, Xt, yt, cv=kfold, scoring='r2')
-	r2 = results.mean()*100.0
-	print("Cross Validation results:")
-	print("R2 mean: %.3f%%, Standard deviation: %.3f%%" % (r2, results.std()*100.0))
+	r2 = cross_validation(model, Xt, yt)
 
 	model_and_score = {'model': model, 'score': r2}
 	return model_and_score
