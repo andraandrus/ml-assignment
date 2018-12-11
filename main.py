@@ -10,6 +10,7 @@ import matplotlib as mpl
 import math
 from sklearn.preprocessing import StandardScaler
 import sklearn.metrics as metrics
+from sklearn.impute import SimpleImputer
 
 # Evaluation methods:
 
@@ -97,7 +98,23 @@ print("------------------------------")
 col_avg_model = regression(housing)
 col_avg_model['name'] = 'replaced missing values with column average'
 
-# 2. replace with values from nearest neighbour
+# 2. replace with most frequent
+
+housing = initialHousing.copy()
+
+imp = SimpleImputer(strategy="most_frequent")
+housing_array = imp.fit_transform(housing)
+columns = ['longitude', 'latitude',	'housing_median_age', 'total_rooms', 'total_bedrooms', 'population', 'households', 'median_income', 'median_house_value',
+			'1h_ocean', 'island', 'inland', 'near_ocean', 'near_bay']
+
+housing = pandas.DataFrame(data=housing_array[1:, 0:], columns=columns)  
+
+print("\n2. replace with most frequent")
+print("------------------------------")
+most_frequent_model = regression(housing)
+most_frequent_model['name'] = 'replaced missing values with most frequent value'
+
+# 3. replace with values from nearest neighbour
 housing = initialHousing.copy()
 
 housing_missing = housing[housing.total_bedrooms.isna()] # these we want to predict
@@ -122,12 +139,12 @@ for index in range(0, len(housing_missing)):
 
 housing.loc[housing.total_bedrooms.isna(), 'total_bedrooms'] = predicted_values
 
-print("\n2. replace with values from nearest neighbour")
+print("\n3. replace with values from nearest neighbour")
 print("--------------------------------")
 knn_model = regression(housing)
 knn_model['name'] = 'replaced missing values with KNN'
 
-# 3. use regression with the values in the total_rooms column as prior knowledge
+# 4. use regression with the values in the total_rooms column as prior knowledge
 housing = initialHousing.copy()
 
 notna = housing.total_bedrooms.notna()
@@ -140,7 +157,7 @@ model.score(housing.total_rooms.values[notna].reshape(-1,1), housing.total_bedro
 missing_bedrooms = model.predict(housing.total_rooms.values[isna].reshape(-1,1))
 housing.total_bedrooms.loc[isna] = np.squeeze(missing_bedrooms)
 
-print("\n3. use prior knowledge")
+print("\n4. use prior knowledge")
 print("--------------------------------")
 pk_model = regression(housing)
 pk_model['name'] = 'replaced missing values using prior knowledge'
