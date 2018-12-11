@@ -6,10 +6,12 @@ from sklearn import preprocessing as pre
 from sklearn.neighbors import KNeighborsRegressor
 import random
 import matplotlib.pyplot as plt 
+import seaborn as sns
 import matplotlib as mpl
 import math
 from sklearn.preprocessing import StandardScaler
 import sklearn.metrics as metrics
+from scipy import stats 
 from sklearn.impute import SimpleImputer
 
 # Evaluation methods:
@@ -172,13 +174,17 @@ for model in model_list:
 	if best_score == model['score']:
 		baseline_model = model
 
+# Remove outliers from data
+housing = housing[(np.abs(stats.zscore(housing[['longitude', 'latitude',	'housing_median_age', 'total_rooms',
+		 	'population', 'households', 'median_income', 'median_house_value']])) < 3).all(axis=1)]
+
 # Test baseline model on unseen data
 # Extract the data into arrays
 y = housing.median_house_value.values.reshape(-1, 1)
 X = housing.drop(columns=['median_house_value'], inplace=False).values
 
 # Pull out values into a holdout set of unseen data
-holdout = random.sample(range(0, 20639), 5000) 
+holdout = random.sample(range(0, len(housing)), 5000) 
 X_unseen = X[holdout]
 y_unseen = y[holdout]
 
@@ -190,11 +196,16 @@ predicted_values = baseline_model['model'].predict(X_unseen)
 score = metrics.r2_score(y_unseen, predicted_values)
 print("R2 score on unseen data when " + baseline_model['name'] + ': ' + str(score*100))
 
-# Drop logically irrelevant columns - neet to normalise beforehand:
-# use regression_model.coef to figure out unimportant variables
+# Normalise data
 
-housing = housing.drop(columns=['median_house_value'])
+# Plot correlation matrix between variables
+plt.figure(figsize=(12,10))
+sns.heatmap(cbar=False,annot=True,data=housing.corr()*100,cmap='coolwarm')
+plt.title('Corelation Matrix')
+plt.show()
 
+# Drop logically irrelevant columns
+# use correlation matrix & regression_model.coef to figure out unimportant variables 
 # for index, col_name in enumerate(housing.columns):
 # 	print('column: ' + col_name + ', coef:' + str(price_model.coef_[0][index-1]))
         
