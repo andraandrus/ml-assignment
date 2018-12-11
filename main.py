@@ -67,7 +67,7 @@ def regression(housing):
 	yt = np.delete(y, holdout, 0)
 
 	# Perform cross validation for model
-	r2 = rrtts(model, X, y)
+	r2 = cross_validation(model, Xt, yt)
 
 	model_and_score = {'model': model, 'score': r2}
 	return model_and_score
@@ -89,30 +89,30 @@ initialHousing = housing.copy()
 # Approaches:
 
 # # 1. replace with column average
-# mean = housing['total_bedrooms'].mean() 
-# housing['total_bedrooms'].fillna(mean, inplace =True)
+mean = housing['total_bedrooms'].mean() 
+housing['total_bedrooms'].fillna(mean, inplace =True)
 
-# print("1. replace with column average")
-# print("------------------------------")
+print("1. replace with column average")
+print("------------------------------")
 
-# col_avg_model = regression(housing)
-# col_avg_model['name'] = 'replaced missing values with column average'
+col_avg_model = regression(housing)
+col_avg_model['name'] = 'replaced missing values with column average'
 
-# # 2. replace with most frequent
+# 2. replace with most frequent
 
-# housing = initialHousing.copy()
+housing = initialHousing.copy()
 
-# imp = SimpleImputer(strategy="most_frequent")
-# housing_array = imp.fit_transform(housing)
-# columns = ['longitude', 'latitude',	'housing_median_age', 'total_rooms', 'total_bedrooms', 'population', 'households', 'median_income', 'median_house_value',
-# 			'1h_ocean', 'island', 'inland', 'near_ocean', 'near_bay']
+imp = SimpleImputer(strategy="most_frequent")
+housing_array = imp.fit_transform(housing)
+columns = ['longitude', 'latitude',	'housing_median_age', 'total_rooms', 'total_bedrooms', 'population', 'households', 'median_income', 'median_house_value',
+			'1h_ocean', 'island', 'inland', 'near_ocean', 'near_bay']
 
-# housing = pandas.DataFrame(data=housing_array[1:, 0:], columns=columns)  
+housing = pandas.DataFrame(data=housing_array[1:, 0:], columns=columns)  
 
-# print("\n2. replace with most frequent")
-# print("------------------------------")
-# most_frequent_model = regression(housing)
-# most_frequent_model['name'] = 'replaced missing values with most frequent value'
+print("\n2. replace with most frequent")
+print("------------------------------")
+most_frequent_model = regression(housing)
+most_frequent_model['name'] = 'replaced missing values with most frequent value'
 
 # 3. replace with values from nearest neighbour
 housing = initialHousing.copy()
@@ -146,54 +146,54 @@ print("--------------------------------")
 knn_model = regression(housing)
 knn_model['name'] = 'replaced missing values with KNN'
 
-# # 4. use regression with the values in the total_rooms column as prior knowledge
-# housing = initialHousing.copy()
+# 4. use regression with the values in the total_rooms column as prior knowledge
+housing = initialHousing.copy()
 
-# notna = housing.total_bedrooms.notna()
-# isna = housing.total_bedrooms.isna()
+notna = housing.total_bedrooms.notna()
+isna = housing.total_bedrooms.isna()
 
-# model = lm.LinearRegression()
-# model.fit(housing.total_rooms.values[notna].reshape(-1,1), housing.total_bedrooms.values[notna].reshape(-1,1))
-# model.score(housing.total_rooms.values[notna].reshape(-1,1), housing.total_bedrooms.values[notna].reshape(-1,1))
+model = lm.LinearRegression()
+model.fit(housing.total_rooms.values[notna].reshape(-1,1), housing.total_bedrooms.values[notna].reshape(-1,1))
+model.score(housing.total_rooms.values[notna].reshape(-1,1), housing.total_bedrooms.values[notna].reshape(-1,1))
 
-# missing_bedrooms = model.predict(housing.total_rooms.values[isna].reshape(-1,1))
-# housing.total_bedrooms.loc[isna] = np.squeeze(missing_bedrooms)
+missing_bedrooms = model.predict(housing.total_rooms.values[isna].reshape(-1,1))
+housing.total_bedrooms.loc[isna] = np.squeeze(missing_bedrooms)
 
-# print("\n4. use prior knowledge")
-# print("--------------------------------")
-# pk_model = regression(housing)
-# pk_model['name'] = 'replaced missing values using prior knowledge'
+print("\n4. use prior knowledge")
+print("--------------------------------")
+pk_model = regression(housing)
+pk_model['name'] = 'replaced missing values using prior knowledge'
 
 # Need to decide on the best of the three models => baseline
-# model_list = [col_avg_model, knn_model, pk_model, most_frequent_model]
-# best_score = max(col_avg_model['score'], knn_model['score'], pk_model['score'])
-# baseline_model = None
-# for model in model_list:
-# 	if best_score == model['score']:
-# 		baseline_model = model
+model_list = [col_avg_model, knn_model, pk_model, most_frequent_model]
+best_score = max(col_avg_model['score'], knn_model['score'], pk_model['score'])
+baseline_model = None
+for model in model_list:
+	if best_score == model['score']:
+		baseline_model = model
 
-# # Test baseline model on unseen data
-# # Extract the data into arrays
-# y = housing.median_house_value.values.reshape(-1, 1)
-# X = housing.drop(columns=['median_house_value'], inplace=False).values
+# Test baseline model on unseen data
+# Extract the data into arrays
+y = housing.median_house_value.values.reshape(-1, 1)
+X = housing.drop(columns=['median_house_value'], inplace=False).values
 
-# # Pull out values into a holdout set of unseen data
-# holdout = random.sample(range(0, 20639), 5000) 
-# X_unseen = X[holdout]
-# y_unseen = y[holdout]
+# Pull out values into a holdout set of unseen data
+holdout = random.sample(range(0, 20639), 5000) 
+X_unseen = X[holdout]
+y_unseen = y[holdout]
 
-# Xt = np.delete(X, holdout, 0)
-# yt = np.delete(y, holdout, 0)
+Xt = np.delete(X, holdout, 0)
+yt = np.delete(y, holdout, 0)
 
-# baseline_model['model'].fit(Xt, yt)
-# predicted_values = baseline_model['model'].predict(X_unseen)
-# score = metrics.r2_score(y_unseen, predicted_values)
-# print("R2 score on unseen data when " + baseline_model['name'] + ': ' + str(score*100))
+baseline_model['model'].fit(Xt, yt)
+predicted_values = baseline_model['model'].predict(X_unseen)
+score = metrics.r2_score(y_unseen, predicted_values)
+print("R2 score on unseen data when " + baseline_model['name'] + ': ' + str(score*100))
 
-# # Drop logically irrelevant columns - neet to normalise beforehand:
-# # use regression_model.coef to figure out unimportant variables
+# Drop logically irrelevant columns - neet to normalise beforehand:
+# use regression_model.coef to figure out unimportant variables
 
-# housing = housing.drop(columns=['median_house_value'])
+housing = housing.drop(columns=['median_house_value'])
 
 # for index, col_name in enumerate(housing.columns):
 # 	print('column: ' + col_name + ', coef:' + str(price_model.coef_[0][index-1]))
