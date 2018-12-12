@@ -23,15 +23,6 @@ def train_and_test(model, X, y):
     print("Accuracy: %.3f%%" % (result * 100.0))
     return result
 
-
-# Leave One Out Cross Validation.
-# def loocv(model, X, y):
-# 	loocv = model_selection.LeaveOneOut()
-# 	results = model_selection.cross_val_score(model, X, y, cv=loocv, scoring='r2')
-# 	mean = results.mean()*100.0
-# 	print("Accuracy: %.3f%% (%.3f%%)" % (mean, results.std()*100.0))
-# 	return mean
-
 # Repeated Random Test-Train Splits. (Need to pass whole dataset)
 def rrtts(model, X, y):
     test_size = 0.33
@@ -72,8 +63,8 @@ def regression(housing):
     # Perform cross validation for model
     r2 = cross_validation(model, Xt, yt)
 
-    model_and_score = {'model': model, 'score': r2}
-    return model_and_score
+    model_dict = {'model': model, 'score': r2, 'holdout': holdout}
+    return model_dict
 
 
 # Import housing data to Pandas DataFrame
@@ -178,18 +169,13 @@ for model in model_list:
     if best_score == model['score']:
         baseline_model = model
 
-# Remove outliers from data
-housing = housing[(np.abs(stats.zscore(housing[['longitude', 'latitude', 'housing_median_age', 'total_rooms',
-                                                'population', 'households', 'median_income',
-                                                'median_house_value']])) < 3).all(axis=1)]
-
 # Test baseline model on unseen data
 # Extract the data into arrays
 y = housing.median_house_value.values.reshape(-1, 1)
 X = housing.drop(columns=['median_house_value'], inplace=False).values
 
 # Pull out values into a holdout set of unseen data
-holdout = random.sample(range(0, len(housing)), 5000)
+holdout = baseline_model['holdout']
 X_unseen = X[holdout]
 y_unseen = y[holdout]
 
@@ -201,7 +187,7 @@ predicted_values = baseline_model['model'].predict(X_unseen)
 score = metrics.r2_score(y_unseen, predicted_values)
 print("R2 score on unseen data when " + baseline_model['name'] + ': ' + str(score * 100))
 
-# Normalise data
+# Normalise data using different approaches
 standard_scaler = preprocessing.StandardScaler()
 standard_housing = standard_scaler.fit_transform(housing)
 standard_housing = pandas.DataFrame(standard_housing,
@@ -219,7 +205,6 @@ minmax_housing = pandas.DataFrame(minmax_housing,
                                            'population', 'households', 'median_income', 'median_house_value',
                                            '1h_ocean',
                                            'island', 'inland', 'near_ocean', 'near_bay'])
-
 robust_scaler = preprocessing.RobustScaler()
 robust_housing = robust_scaler.fit_transform(housing)
 robust_housing = pandas.DataFrame(robust_housing, columns=['longitude', 'latitude', 'housing_median_age', 'total_rooms',
@@ -228,13 +213,56 @@ robust_housing = pandas.DataFrame(robust_housing, columns=['longitude', 'latitud
                                                            'median_house_value', '1h_ocean',
                                                            'island', 'inland', 'near_ocean', 'near_bay'])
 
-# Plot correlation matrix between variables
-plt.figure(figsize=(12, 10))
-sns.heatmap(cbar=False, annot=True, data=housing.corr() * 100, cmap='coolwarm')
-plt.title('Correlation Matrix')
-plt.show()
 
-# Drop logically irrelevant columns
-# use correlation matrix & regression_model.coef to figure out unimportant variables 
-# for index, col_name in enumerate(housing.columns):
-# 	print('column: ' + col_name + ', coef:' + str(price_model.coef_[0][index-1]))
+# Plot correlation matrix between variables using standard normalisation
+# plt.figure(figsize=(12, 10))
+# sns.heatmap(cbar=False, annot=True, data=standard_housing.corr() * 100, cmap='coolwarm')
+# plt.title('Standard Housing Correlation Matrix')
+# plt.show()
+
+# Remove independent variables: longitude, latitude, population, inland
+standard_housing = standard_housing.drop(columns=['inland'])
+minmax_housing = minmax_housing.drop(columns=['inland'])
+robust_housing = robust_housing.drop(columns=['inland'])
+
+y = standard_housing.median_house_value.values.reshape(-1, 1)
+X = standard_housing.drop(columns=['median_house_value'], inplace=False).values
+
+X_unseen = X[holdout]
+y_unseen = y[holdout]
+
+Xt = np.delete(X, holdout, 0)
+yt = np.delete(y, holdout, 0)
+
+baseline_model['model'].fit(Xt, yt)
+predicted_values = baseline_model['model'].predict(X_unseen)
+score = metrics.r2_score(y_unseen, predicted_values)
+print("R2 score on unseen data after standard normalisation & drop independent variables: " + str(score * 100))
+
+y = minmax_housing.median_house_value.values.reshape(-1, 1)
+X = minmax_housing.drop(columns=['median_house_value'], inplace=False).values
+
+X_unseen = X[holdout]
+y_unseen = y[holdout]
+
+Xt = np.delete(X, holdout, 0)
+yt = np.delete(y, holdout, 0)
+
+baseline_model['model'].fit(Xt, yt)
+predicted_values = baseline_model['model'].predict(X_unseen)
+score = metrics.r2_score(y_unseen, predicted_values)
+print("R2 score on unseen data after minmax normalisation & drop independent variables: " + str(score * 100))
+
+y = robust_housing.median_house_value.values.reshape(-1, 1)
+X = robust_housing.drop(columns=['median_house_value'], inplace=False).values
+
+X_unseen = X[holdout]
+y_unseen = y[holdout]
+
+Xt = np.delete(X, holdout, 0)
+yt = np.delete(y, holdout, 0)
+
+baseline_model['model'].fit(Xt, yt)
+predicted_values = baseline_model['model'].predict(X_unseen)
+score = metrics.r2_score(y_unseen, predicted_values)
+print("R2 score on unseen data after robust normalisation & drop independent variables: " + str(score * 100))
