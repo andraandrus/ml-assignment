@@ -11,18 +11,6 @@ from sklearn import preprocessing
 
 housing = pandas.read_csv('housing.csv')
 
-# print(housing) #displays in Jupyter notebook
-
-# ocean_proximity can have the following values 'ISLAND' 'NEAR_OCEAN' 'INLAND' '<1H OCEAN' 'NEAR BAY'
-# print(housing['ocean_proximity'])
-
-# housing['1h_ocean'] = [1 if i=='<1H OCEAN' else 0 for i in housing.ocean_proximity.values]
-# housing['island'] = [1 if i=='ISLAND' else 0 for i in housing.ocean_proximity.values]
-# housing['inland'] = [1 if i=='INLAND' else 0 for i in housing.ocean_proximity.values]
-# housing['near_ocean'] = [1 if i=='NEAR OCEAN' else 0 for i in housing.ocean_proximity.values]
-# housing['near_bay'] = [1 if i=='NEAR BAY' else 0 for i in housing.ocean_proximity.values]
-# housing.drop(columns=['ocean_proximity'], inplace=True)
-
 ocean_proximity_type = {
     'ISLAND': 1,
     'NEAR OCEAN': 2,
@@ -33,28 +21,16 @@ ocean_proximity_type = {
 housing['ocean_proximity_int'] = [ocean_proximity_type[x] for x in housing.ocean_proximity.values]
 housing.drop(columns=['ocean_proximity'], inplace=True)
 
-# print (housing)
+# use regression with the values in the total_rooms column as prior knowledge
+notna = housing.total_bedrooms.notna()
+isna = housing.total_bedrooms.isna()
 
-# total_bedrooms has missing values.
-# Approaches:
-# 1. replace with column average
-not_missing = housing.total_bedrooms.notna()
-missing = housing.total_bedrooms.isna()
-count = sum(not_missing)
-vals = sum(housing.total_bedrooms.values[not_missing])
-avg = vals / count
-print(avg)
-print('----')
+model = lm.LinearRegression()
+model.fit(housing.total_rooms.values[notna].reshape(-1, 1), housing.total_bedrooms.values[notna].reshape(-1, 1))
+model.score(housing.total_rooms.values[notna].reshape(-1, 1), housing.total_bedrooms.values[notna].reshape(-1, 1))
 
-print(len(housing.total_bedrooms))
-
-for index in range(0, len(missing)):
-    if missing[index]:
-        housing.total_bedrooms[index] = avg
-
-print('----')
-missing = housing.total_bedrooms.isna()
-print(sum(missing))
+missing_bedrooms = model.predict(housing.total_rooms.values[isna].reshape(-1, 1))
+housing.total_bedrooms.loc[isna] = np.squeeze(missing_bedrooms)
 
 robust_scaler = preprocessing.RobustScaler()
 robust_housing = robust_scaler.fit_transform(housing)
@@ -110,6 +86,10 @@ best_linear_model = [0, 0, 0, 0]  # x index, y index, score, fold no.
 best_linear = None
 best_poly_model = [0, 0, 0, 0]  # x index, y index, score, fold no.
 best_poly = None
+best_poly_ridge_model = [0, 0, 0, 0, 0] # x index, y index, score, fold no, alpha/lambda
+best_poly_ridge = None
+best_poly_lasso_model = [0, 0, 0, 0, 0] # x index, y index, score, fold no, alpha/lambda
+best_poly_lasso = None
 best_binner_model = [0, 0, 0, 0]  # x index, y index, score, fold no.
 best_binner = None
 
@@ -150,7 +130,11 @@ for train_index, test_index in splits:
         robust_best_linear_model[2] = robust_accuracy
         robust_best_linear_model[3] = n
 
-    for deg in range(1, 5):
+    ridge_lambda = 0.0006
+    lasso_lambda = 0.0006
+    ridge_model = lm.Ridge(alpha=ridge_lambda)
+    lasso_model = lm.Lasso(alpha=lasso_lambda)
+    for deg in range(1, 6):
         poly = PolynomialFeatures(degree=deg)
         X_train_poly, X_test_poly = poly.fit_transform(X_train), poly.fit_transform(X_test)
         robust_X_train_poly, robust_X_test_poly = poly.fit_transform(robust_X_train), poly.fit_transform(robust_X_test)
@@ -160,6 +144,12 @@ for train_index, test_index in splits:
 
         model.fit(robust_X_train_poly, robust_y_train)
         robust_accuracy = model.score(robust_X_test_poly, robust_y_test)
+
+        ridge_model.fit(X_train_poly, y_train)
+        ridge_accuracy = ridge_model.score(X_test_poly, y_test)
+
+        lasso_model.fit(X_train_poly, y_train)
+        lasso_accuracy = lasso_model.score(X_test_poly, y_test)
 
         if accuracy > best_poly_model[2]:
             print(
@@ -178,6 +168,26 @@ for train_index, test_index in splits:
             robust_best_poly_model[2] = robust_accuracy
             robust_best_poly_model[3] = n
             robust_best_poly = poly
+
+        if ridge_accuracy > best_poly_ridge_model[2]:
+            print(
+                "NEW RIDGE POLYNOMIAL BEST: FOLD: " + n.__str__() + " DEGREE: " + deg.__str__() + " ACCURACY: " + ridge_accuracy.__str__() + " LAMBDA: " + ridge_lambda.__str__())
+            best_poly_ridge_model[0] = X_train_poly
+            best_poly_ridge_model[1] = y_train
+            best_poly_ridge_model[2] = ridge_accuracy
+            best_poly_ridge_model[3] = n
+            best_poly_ridge_model[4] = ridge_lambda
+            best_poly_ridge = poly
+
+        if lasso_accuracy> best_poly_lasso_model[2]:
+            print(
+                "NEW LASSO POLYNOMIAL BEST: FOLD: " + n.__str__() + " DEGREE: " + deg.__str__() + " ACCURACY: " + lasso_accuracy.__str__() + " LAMBDA: " + lasso_lambda.__str__())
+            best_poly_lasso_model[0] = X_train_poly
+            best_poly_lasso_model[1] = y_train
+            best_poly_lasso_model[2] = lasso_accuracy
+            best_poly_lasso_model[3] = n
+            best_poly_lasso_model[4] = lasso_lambda
+            best_poly_lasso = poly
 
     for n_bins in range(10, 40):
         binner = KBinsDiscretizer(n_bins=n_bins, strategy='uniform')
@@ -209,43 +219,56 @@ for train_index, test_index in splits:
             robust_best_binner_model[3] = n
             robust_best_binner = binner
 
-    # svr_rbf = SVR(kernel='rbf', gamma=0.00001, C=1e6)
-    # svr_rbf.fit(X_train, y_train)
-
-    # print('----')
-    # print('SVR results for RBF: ')
-    # print('Training error: ' + str(svr_rbf.score(X_train, y_train)))
-    # print('Testing error: ' + str(svr_rbf.score(X_test, y_test)))
-
     n += 1
 
 # Evaluation of method
 optimal_model = model.fit(best_linear_model[0], best_linear_model[1])
 print('Accuracy on seen data LIN: ' + str(best_linear_model[2] * 100) + " on fold: " + str(best_linear_model[3]))
 print('Accuracy on unseen data LIN: ' + str(optimal_model.score(X_holdout, y_holdout) * 100))
+
 optimal_model = model.fit(robust_best_linear_model[0], robust_best_linear_model[1])
 print('Accuracy on seen NORMALIZED data LIN: ' + str(robust_best_linear_model[2] * 100) + " on fold: " + str(
     robust_best_linear_model[3]))
 print('Accuracy on unseen NORMALIZED data LIN: ' + str(optimal_model.score(robust_X_holdout, robust_y_holdout) * 100))
+
 optimal_model = model.fit(best_poly_model[0], best_poly_model[1])
 print('Accuracy on seen data POLY: ' + str(best_poly_model[2] * 100) + " on fold: " + str(best_poly_model[3]))
 print('Accuracy on unseen data POLY: ' + str(optimal_model.score(best_poly.fit_transform(X_holdout), y_holdout) * 100))
 print('Polynomial: ' + str(best_poly.degree))
+
 optimal_model = model.fit(robust_best_poly_model[0], robust_best_poly_model[1])
 print('Accuracy on seen NORMALIZED data POLY: ' + str(robust_best_poly_model[2] * 100) + " on fold: " + str(
     robust_best_poly_model[3]))
 print('Accuracy on unseen NORMALIZED data POLY: ' + str(optimal_model.score(robust_best_poly.fit_transform(robust_X_holdout), robust_y_holdout) * 100))
 print('NORMALIZED Polynomial: ' + str(robust_best_poly.degree))
+
 optimal_model = model.fit(best_binner_model[0], best_binner_model[1])
 print('Accuracy on seen data BIN: ' + str(best_binner_model[2] * 100) + " on fold: " + str(best_binner_model[3]))
 print('Accuracy on unseen data BIN: ' + str(optimal_model.score(best_binner.fit_transform(X_holdout), y_holdout) * 100))
 print('No of bins: ' + str(best_binner.n_bins))
+
 optimal_model = model.fit(robust_best_binner_model[0], robust_best_binner_model[1])
 print('Accuracy on NORMALIZED seen data BIN: ' + str(robust_best_binner_model[2] * 100) + " on fold: " + str(
     robust_best_binner_model[3]))
 print('Accuracy on NORMALIZED unseen data BIN: ' + str(
     optimal_model.score(robust_best_binner.fit_transform(robust_X_holdout), robust_y_holdout) * 100))
 print('NORMALIZED No of bins: ' + str(robust_best_binner.n_bins))
+
+optimal_model = lm.Ridge(best_poly_ridge_model[4]).fit(best_poly_ridge_model[0], best_poly_ridge_model[1])
+print('Accuracy on seen data RIDGE POLY: ' + str(best_poly_ridge_model[2] * 100) + " on fold: " + str(best_poly_ridge_model[3]))
+print('Accuracy on unseen data RIDGE POLY: ' + str(optimal_model.score(best_poly_ridge.fit_transform(X_holdout), y_holdout) * 100))
+print('Polynomial: ' + str(best_poly_ridge.degree))
+print('Lambda: ' + str(best_poly_ridge_model[4]))
+
+optimal_model = lm.Lasso(best_poly_ridge_model[4]).fit(best_poly_lasso_model[0], best_poly_lasso_model[1])
+print('Accuracy on seen data LASSO POLY: ' + str(best_poly_lasso_model[2] * 100) + " on fold: " + str(best_poly_lasso_model[3]))
+print('Accuracy on unseen data LASSO POLY: ' + str(optimal_model.score(best_poly_lasso.fit_transform(X_holdout), y_holdout) * 100))
+print('Polynomial: ' + str(best_poly_lasso.degree))
+print('Lambda: ' + str(best_poly_lasso_model[4]))
+
+coefs = pandas.Series(optimal_model.coef_, index = best_poly_lasso_model[0].columns)
+print("Lasso picked " + str(sum(coefs != 0)) + " features and eliminated the other " +  \
+      str(sum(coefs == 0)) + " features")
 
 best_model = None
 best_normalized_model = None
